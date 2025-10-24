@@ -1,2 +1,0 @@
-# gamification
-Gamification Repository
