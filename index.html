@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Racing</title>
+  <style>
+    :root {
+      --cell: 28px;
+      --track-h: 44px;
+      --bg: #0b1020;
+      --panel: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --grid: #e5e7eb;
+      --grid-strong: #cbd5e1;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+    .btn { cursor: pointer; border: none; border-radius: 12px; padding: 8px 12px; font-weight: 600; }
+    .btn-primary { background: #0369a1; color: #fff; }
+    .btn-danger { background: #b91c1c; color: #fff; }
+    .btn-plain { background: #fff; border: 1px solid var(--border); }
+    .input { width: 90px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; font: inherit; }
+    .overview { position: relative; height: 14px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+    .finish-stripe { position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: #0f172a; }
+    .marker { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; }
+    .ruler { display: flex; font-size: 10px; color: #6b7280; }
+    .ruler > div { width: var(--cell); text-align: center; }
+    .grid-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; background: #fff; }
+    .grid-head { display:flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+    .lanes { padding: 0 8px 14px; }
+    .lane { position: relative; height: var(--track-h); display: flex; align-items: center; }
+    .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 6px 12px rgba(0,0,0,.08); }
+    .muted { color: var(--muted); font-size: 12px; }
+    .b0 { background:#3b82f6; } .b1 { background:#f43f5e; } .b2 { background:#10b981; } .b3 { background:#f59e0b; } .b4 { background:#8b5cf6; } .b5 { background:#475569; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header style="display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap;">
+      <h1>Racing</h1>
+      <div>
+        <label>Race length <input id="raceLength" class="input" type="number" min="10" max="500" value="60"></label>
+        <button id="btnReset" class="btn btn-plain">New Race</button>
+        <button id="btnSave" class="btn btn-primary">Save</button>
+        <button id="btnLoad" class="btn btn-primary">Load</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>Overview</h2>
+      <div class="overview" id="overview"><div class="finish-stripe"></div></div>
+      <div id="winner"></div>
+    </section>
+
+    <section class="card">
+      <h2>Detailed View</h2>
+      <div class="grid-wrap"><div class="grid-head"><div id="viewSpan"></div><div id="turnLabel"></div></div><div id="grid"></div></div>
+    </section>
+
+    <section class="card">
+      <h3>Your Move</h3>
+      <label>Forward <input id="inpForward" class="input" type="number" min="1" max="20" value="1"></label>
+      <button id="btnForward" class="btn btn-primary">Move Forward</button>
+      <label>Backward <input id="inpBackward" class="input" type="number" min="1" max="20" value="1"></label>
+      <button id="btnBackward" class="btn btn-danger">Move Backward</button>
+      <button id="btnStepForward" class="btn btn-primary">Step Forward</button>
+      <button id="btnStepBackward" class="btn btn-primary">Step Backward</button>	  
+    </section>
+  </div>
+
+  <script>
+    const NUM_RACERS=6,HUMAN=0,NAMES=["You","AI 1","AI 2","AI 3","AI 4","AI 5"];
+    let raceLength=60,positions=Array(NUM_RACERS).fill(0),aiAdj=Array(NUM_RACERS).fill(0),turn=1,winner=null;
+    const elRaceLength=document.getElementById('raceLength'),elOverview=document.getElementById('overview'),elWinner=document.getElementById('winner'),elGrid=document.getElementById('grid'),elViewSpan=document.getElementById('viewSpan'),elTurnLabel=document.getElementById('turnLabel'),elInpForward=document.getElementById('inpForward'),elInpBackward=document.getElementById('inpBackward');
+    const clamp=(n,l,h)=>Math.max(l,Math.min(h,n)),randStep=()=>1+Math.floor(4*Math.random());
+    function renderOverview(){elOverview.querySelectorAll('.marker').forEach(m=>m.remove());for(let i=0;i<NUM_RACERS;i++){const m=document.createElement('div');m.className='marker b'+i;m.style.left=(100*positions[i]/raceLength)+'%';elOverview.appendChild(m)}}
+    function computeView(){let min=Math.min(...positions),max=Math.max(...positions);return{start:clamp(Math.floor(min)-6,0,raceLength-1),end:clamp(Math.ceil(max)+6,1,raceLength)}}
+    function renderGrid(){const v=computeView();elViewSpan.textContent=`View: ${v.start}-${v.end}`;const lanes=document.createElement('div');lanes.className='lanes';for(let i=0;i<NUM_RACERS;i++){const lane=document.createElement('div');lane.className='lane';const chip=document.createElement('div');chip.className='chip b'+i;chip.textContent=NAMES[i]+" "+positions[i];chip.style.transform=`translateX(${(positions[i]-v.start)*28}px)`;lane.appendChild(chip);lanes.appendChild(lane)}elGrid.innerHTML='';elGrid.appendChild(lanes)}
+    function redraw(){elTurnLabel.textContent=`Turn #${turn}`;renderOverview();renderGrid();elWinner.textContent=winner==null?'':`Winner: ${NAMES[winner]}`}
+    function processTurn(d){if(winner!=null)return;positions[HUMAN]=clamp(positions[HUMAN]+d,0,raceLength);for(let i=1;i<NUM_RACERS;i++){positions[i]=clamp(positions[i]+randStep()+(aiAdj[i]||0),0,raceLength)};const win=positions.findIndex(p=>p>=raceLength);if(win!=-1)winner=win;turn++;redraw()}
+	function processStep(d){positions[HUMAN]=clamp(positions[HUMAN]+d,0,raceLength);redraw()}
+    document.getElementById('btnForward').onclick=()=>processTurn(parseInt(elInpForward.value)||0);
+    document.getElementById('btnBackward').onclick=()=>processTurn(-(parseInt(elInpBackward.value)||0));
+	document.getElementById('btnStepForward').onclick=()=>processStep(1);
+	document.getElementById('btnStepBackward').onclick=()=>processStep(-1);
+    document.getElementById('btnReset').onclick=()=>{positions=Array(NUM_RACERS).fill(0);turn=1;winner=null;aiAdj=Array(NUM_RACERS).fill(0);raceLength=parseInt(elRaceLength.value)||60;redraw()};
+    document.getElementById('btnSave').onclick=()=>{const data={raceLength,positions,aiAdj,turn,winner};localStorage.setItem('raceSave',JSON.stringify(data));alert('Race saved!')};
+    document.getElementById('btnLoad').onclick=()=>{const s=localStorage.getItem('raceSave');if(!s){alert('No save found');return;}try{const d=JSON.parse(s);raceLength=d.raceLength;positions=d.positions;aiAdj=d.aiAdj;turn=d.turn;winner=d.winner;elRaceLength.value=raceLength;alert('Race loaded');}catch{alert('Load failed');}redraw()};
+    redraw();
+  </script>
+</body>
+</html>
